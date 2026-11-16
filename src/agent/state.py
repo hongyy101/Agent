@@ -10,6 +10,8 @@ class AgentState(TypedDict):
 
     Attributes:
         messages (list): 消息列表，包含与代理相关的消息。
+        step_count (int): 步骤计数器，用于跟踪代理的操作步骤。
     """
 
     messages: Annotated[list, add_messages]
+    step_count: int
