@@ -1,11 +1,20 @@
  # agent 节点、tools 节点
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, ToolMessage
 from .state import AgentState
+import os
+
+llm = ChatOpenAI(
+        model="deepseek-flash",
+        temperature=0,
+        openai_api_key=os.getenv("DEEPSEEK_API_KEY"),
+        base_url=os.getenv("DEEPSEEK_API_BASE_URL", "https://api.deepseek.com")
+        )
 
 def fake_search(query:str) -> str:
 
     """
-    fack_search 是一个模拟搜索函数，用于根据查询返回搜索结果。
+    搜索 LangGraph 相关文档。当用户询问 LangGraph 概念、用法或原理时使用。
 
     Args:
         query (str): 搜索查询字符串
@@ -30,21 +39,11 @@ async def call_model(state: AgentState) -> dict:
     # 例如，使用 OpenAI API 或其他模型进行推理
     # 这里我们返回一个示例输出
 
-    step = state.get("step_count", 0) + 1
-    if step == 1:
-        msg = AIMessage(
-            content="模型推理结果：需要调用工具。",
-            tool_calls=[
-                { 
-                    "name": "fake_search", 
-                    "args": {"query": "LangGraph"}, 
-                    "id": "tool_call_1" 
-                }
-            ])
-    else:
-        msg = AIMessage(content="根据搜索结果，LangGraph 是一个图编排框架。")
+    llm_with_tools  = llm.bind_tools([fake_search])
 
-    return {"messages": [msg], "step_count": step}
+    response = await llm_with_tools.ainvoke(state['messages'])
+
+    return {"messages": [response]}
 
 def router(state: AgentState) -> str:
     """
@@ -67,7 +66,6 @@ def router(state: AgentState) -> str:
     else:
         return "end"
 
-
 def tools_node(state: AgentState) -> dict:
     """
     tools_node 是一个工具节点函数，用于在代理的状态中执行特定工具操作。
@@ -83,11 +81,18 @@ def tools_node(state: AgentState) -> dict:
     # 这里我们返回一个示例输出
 
     last = state['messages'][-1] 
-    if isinstance(last, AIMessage) and last.tool_calls:
-        tool_call = last.tool_calls[0]
-        if tool_call["name"] == "fake_search":
-            query = tool_call["args"]["query"]
+    if not isinstance(last, AIMessage) or not last.tool_calls:
+        return {"messages": [ToolMessage(content="No tool call found.", tool_call_id=None)]}
+
+    tool_messages = []
+    for tool in last.tool_calls:
+        tool_name = tool.get("name")
+        tool_call_id = tool.get("id")
+        if tool_name == "fake_search":
+            query = tool.get("args", {}).get("query")
             search_result = fake_search(query)
-            return {"messages": [ToolMessage(content=search_result, tool_call_id=tool_call["id"])]}
-    
-    return {"messages": [ToolMessage(content="No tool call found.", tool_call_id=None)]}
+            tool_messages.append(ToolMessage(content=search_result, tool_call_id=tool_call_id))
+        else:
+            tool_messages.append(ToolMessage(content=f"Unknown tool: {tool_name}", tool_call_id=tool_call_id))
+
+    return {"messages": tool_messages}
