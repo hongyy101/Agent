@@ -2,6 +2,7 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, ToolMessage
 from .state import AgentState
+from src.tools.client import create_client
 import os
 
 llm = ChatOpenAI(
@@ -11,22 +12,8 @@ llm = ChatOpenAI(
         base_url=os.getenv("DEEPSEEK_API_BASE_URL", "https://api.deepseek.com")
         )
 
-def fake_search(query:str) -> str:
-
-    """
-    搜索 LangGraph 相关文档。当用户询问 LangGraph 概念、用法或原理时使用。
-
-    Args:
-        query (str): 搜索查询字符串
-
-    Returns:
-        dict: 返回一个搜索结果。
-    """
-    # 在这里可以添加搜索逻辑
-    # 例如，调用搜索引擎 API 或数据库查询
-    # 这里我们返回一个示例输出
-
-    return f"这是一个关于 {query} 的搜索结果"
+mcp_tools = None
+mcp_tools_by_name = {}  # 工具名 -> Tool 对象的映射
 
 async def call_model(state: AgentState) -> dict:
     """
@@ -39,8 +26,13 @@ async def call_model(state: AgentState) -> dict:
     # 例如，使用 OpenAI API 或其他模型进行推理
     # 这里我们返回一个示例输出
 
-    llm_with_tools  = llm.bind_tools([fake_search])
+    global mcp_tools, mcp_tools_by_name
+    if mcp_tools is None:
+        mcp_client = await create_client()
+        mcp_tools = await mcp_client.get_tools()
+        mcp_tools_by_name = { tool.name: tool for tool in mcp_tools }
 
+    llm_with_tools  = llm.bind_tools(mcp_tools)
     response = await llm_with_tools.ainvoke(state['messages'])
 
     return {"messages": [response]}
@@ -66,7 +58,7 @@ def router(state: AgentState) -> str:
     else:
         return "end"
 
-def tools_node(state: AgentState) -> dict:
+async def tools_node(state: AgentState) -> dict:
     """
     tools_node 是一个工具节点函数，用于在代理的状态中执行特定工具操作。
 
@@ -79,20 +71,32 @@ def tools_node(state: AgentState) -> dict:
     # 在这里可以添加对 state 的处理逻辑
     # 例如，调用特定的工具或执行操作
     # 这里我们返回一个示例输出
-
     last = state['messages'][-1] 
     if not isinstance(last, AIMessage) or not last.tool_calls:
         return {"messages": [ToolMessage(content="No tool call found.", tool_call_id=None)]}
 
-    tool_messages = []
-    for tool in last.tool_calls:
-        tool_name = tool.get("name")
-        tool_call_id = tool.get("id")
-        if tool_name == "fake_search":
-            query = tool.get("args", {}).get("query")
-            search_result = fake_search(query)
-            tool_messages.append(ToolMessage(content=search_result, tool_call_id=tool_call_id))
-        else:
-            tool_messages.append(ToolMessage(content=f"Unknown tool: {tool_name}", tool_call_id=tool_call_id))
+    if mcp_tools is None:
+        raise RuntimeError("tools_node 执行时 mcp_tools 尚未加载")
 
+    global mcp_tools_by_name
+    tool_messages = []
+    for t in last.tool_calls:
+         
+        tool_name = t.get("name")
+        tool_call_id = t.get("id")
+        query = t.get("args", {})
+        tool = mcp_tools_by_name.get(tool_name)
+
+        if tool is None:
+            tool_messages.append(ToolMessage(content=f"Unknown tool: {tool_name}", tool_call_id=tool_call_id))
+            continue
+
+        try:
+           
+            search_result = await tool.ainvoke(query)
+            tool_messages.append(ToolMessage(content=str(search_result), tool_call_id=tool_call_id))
+
+        except Exception as e:
+            tool_messages.append(ToolMessage(content=f"tool execution failed: {e} - Unknown tool: {tool_name}", tool_call_id=tool_call_id))
+        
     return {"messages": tool_messages}

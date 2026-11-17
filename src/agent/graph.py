@@ -5,7 +5,7 @@ from .state import AgentState
 from .nodes import call_model, router, tools_node
 
 
-async def build_react_graph(checkpointer=None) -> StateGraph:
+def build_react_graph(checkpointer=None) -> StateGraph:
     builder = StateGraph(AgentState)
     builder.add_node("call_model", call_model)
     builder.add_node("tools_node", tools_node)

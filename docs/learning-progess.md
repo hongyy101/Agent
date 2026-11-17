@@ -7,8 +7,8 @@
 
 | 月份 | 主题 | 状态 | 完成周数 |
 |------|------|------|---------|
-| 第 1 月 | LangGraph 运行时底座 + Postgres 持久化 | 🔄 进行中 | 0/4 |
-| 第 2 月 | MCP 工具层 + 确定性执行边界 | ⬜ 未开始 | 0/4 |
+| 第 1 月 | LangGraph 运行时底座 + Postgres 持久化 | 🔄 进行中 | 3/4 |
+| 第 2 月 | MCP 工具层 + 确定性执行边界 | 🔄 进行中 | 0/4 |
 | 第 3 月 | HITL + 容错控制 + 防幻觉 | ⬜ 未开始 | 0/4 |
 | 第 4 月 | 可观测性 + 审计 + 求职作品打磨 | ⬜ 未开始 | 0/4 |
 
@@ -20,13 +20,13 @@
 
 | 周次 | 核心任务 | 状态 | 验收标准 | 完成日期 | 备注 |
 |------|---------|------|---------|---------|------|
-| 第1周 | Python 异步范式对齐 + LangGraph 核心概念 | ⬜ | 能读懂官方异步示例；理解 StateGraph/Node/Edge/Checkpointer 职责边界 | | |
-| 第2周 | 手写 ReAct 循环（不用 prebuilt） | ⬜ | StateGraph 手动定义 agent/tools 节点，实现决策→执行→回传→再决策闭环 | | |
-| 第3周 | Postgres Checkpointer 深度集成 | ⬜ | ConnectionPool + PostgresSaver 持久化；理解 thread_id 与状态恢复；能画出 checkpoint 流转图 | | |
+| 第1周 | Python 异步范式对齐 + LangGraph 核心概念 | ✅ | 能读懂官方异步示例；理解 StateGraph/Node/Edge/Checkpointer 职责边界 | | |
+| 第2周 | 手写 ReAct 循环（不用 prebuilt） | ✅ | StateGraph 手动定义 agent/tools 节点，实现决策→执行→回传→再决策闭环 | | |
+| 第3周 | Postgres Checkpointer 深度集成 | ✅ | ConnectionPool + PostgresSaver 持久化；理解 thread_id 与状态恢复；能画出 checkpoint 流转图 | | |
 | 第4周 | 错误处理与状态恢复实验 | ⬜ | 模拟进程中断后从 Postgres 恢复；验证子图不应带独立 checkpointer | | |
 
 ### 第 1 月关键概念自查（每周末打勾）
-- [ ] 能解释 StateGraph 中 Node 和 Edge 的区别
+- [✅] 能解释 StateGraph 中 Node 和 Edge 的区别
 - [ ] 能说清 Checkpointer 存的是什么、不存什么
 - [ ] 能画出一次 invoke 在 Postgres 中产生的 checkpoint 记录
 - [ ] 能解释为什么子图不应带独立 checkpointer
@@ -38,7 +38,7 @@
 
 | 周次 | 核心任务 | 状态 | 验收标准 | 完成日期 | 备注 |
 |------|---------|------|---------|---------|------|
-| 第5周 | FastMCP Server 开发（stdio） | ⬜ | 2-3 个模拟 .NET API 封装为 MCP Tool；理解 docstring 对决策的影响 | | |
+| 第5周 | FastMCP Server 开发（stdio） | 🔄 | 2-3 个模拟 .NET API 封装为 MCP Tool；理解 docstring 对决策的影响 | | |
 | 第6周 | streamable-http + MultiServerMCPClient | ⬜ | HTTP 传输；多 Server 同时连接，模拟不同部门 API | | |
 | 第7周 | 自写权限中间件（FastAPI + Postgres 策略表） | ⬜ | 工具调用前查策略表；拒绝时返回结构化错误；不用 0.x 小库 | | |
 | 第8周 | 工具输入/输出契约 + 错误分类 | ⬜ | Pydantic 输入/输出模型；输出裁剪；错误码映射（可重试 vs 不可重试） | | |
@@ -91,7 +91,10 @@
 
 | 日期 | 问题 | 处理方式 | 状态 |
 |------|------|---------|------|
-| | | | |
+|2026-11-17 | psycopg 找不到 libpq| psycopg[binary,pool]|✅|
+|2026-11-17 | Windows 上 ProactorEventLoop 和 psycopg 异步不兼容 →| asyncio.run(main(), loop_factory=asyncio.SelectorEventLoop)|✅|
+|2026-11-17 | AsyncConnectionPool 构造时自动打开被弃用| open=False + await pool.open(wait=True)|✅|
+|2026-11-17 | PostgresSaver 导入路径错误| langgraph.checkpoint.postgres，不是 langchain_core.savers|✅|
 
 ## 阶段性里程碑
 

@@ -7,13 +7,13 @@ from .checkpointer import get_checkpointer
 
 async def main():
    checkpointer = await get_checkpointer()
-   graph = await build_react_graph(checkpointer=checkpointer)
+   graph = build_react_graph(checkpointer=checkpointer)
    result = await graph.ainvoke(
        {
-           "messages": [HumanMessage(content="LangGraph 是什么？")],
+           "messages": [HumanMessage(content="How's the weather today in Shanghai?")],
            "step_count": 0
        },
-       config={"configurable": {"thread_id": "test-thread-1"}}
+       config={"configurable": {"thread_id": "test-thread-8"}}
    )
 
    print("=== 最终消息列表 ===")
