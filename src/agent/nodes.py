@@ -4,6 +4,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from .state import AgentState
 from src.tools.client import create_client
 import os
+import json
 
 llm = ChatOpenAI(
         model="deepseek-flash",
@@ -91,10 +92,28 @@ async def tools_node(state: AgentState) -> dict:
             tool_messages.append(ToolMessage(content=f"Unknown tool: {tool_name}", tool_call_id=tool_call_id))
             continue
 
-        try:
-           
-            search_result = await tool.ainvoke(query)
-            tool_messages.append(ToolMessage(content=str(search_result), tool_call_id=tool_call_id))
+        try:       
+            raw = await tool.ainvoke(query)
+            text = raw
+
+            if isinstance(raw, list) and raw and isinstance(raw[0], dict):
+                text = raw[0].get("text")
+
+            if not isinstance(text, str) or not text.strip():
+                tool_messages.append(ToolMessage(content=json.dumps({"error": True, "code": "EMPTY_RESULT", "message": "工具返回为空", "retryable": False}, ensure_ascii=False), tool_call_id=tool_call_id))
+                continue
+
+            try:
+                obj = json.loads(text)
+                if isinstance(obj, dict) and obj.get("ok") is True:
+                    tool_messages.append(ToolMessage(content=json.dumps(obj.get("data"),ensure_ascii=False), tool_call_id=tool_call_id))
+                elif isinstance(obj, dict) and obj.get("ok") is False:
+                    tool_messages.append(ToolMessage(content=json.dumps(obj.get("error"),ensure_ascii=False), tool_call_id=tool_call_id))
+                else:
+                    tool_messages.append(ToolMessage(content=text, tool_call_id=tool_call_id))
+            except json.JSONDecodeError:
+                tool_messages.append(ToolMessage(content=text, tool_call_id=tool_call_id))
+                continue
 
         except Exception as e:
             tool_messages.append(ToolMessage(content=f"tool execution failed: {e} - Unknown tool: {tool_name}", tool_call_id=tool_call_id))
