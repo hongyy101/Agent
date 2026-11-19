@@ -10,10 +10,10 @@ async def main():
    graph = build_react_graph(checkpointer=checkpointer)
    result = await graph.ainvoke(
        {
-           "messages": [HumanMessage(content="How's the weather today in Shanghai?")],
+           "messages": [HumanMessage(content="深圳龙岗区今天的天气怎么样？")],
            "step_count": 0
        },
-       config={"configurable": {"thread_id": "test-thread-8"}}
+       config={"configurable": {"thread_id": "test-thread-13"}}
    )
 
    print("=== 最终消息列表 ===")

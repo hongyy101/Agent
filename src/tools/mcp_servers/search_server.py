@@ -9,10 +9,10 @@ def fake_search(query:str) -> str:
     return f"这是一个关于「{query}」的模拟搜索结果"
 
 @mcp.tool()
-def fake_weather(query:str) -> str:
-    '''搜索天气相关的问题。当用户询问某个城市或地区天气时使用。'''
+def fake_weather(city:str) -> str:
+    '''查询指定城市的实时天气。当用户询问任何城市或地区的天气、温度、下雨、晴天等气象信息时使用。参数 city 是城市名，如'北京'、'上海'。'''
 
-    return f"这是一个关于「{query}」的搜索结果，用户询问某个城市或地区天气，当不明确位置时，可以使用IP地址去推断大体的地址"
+    return f"{city} 今天晴，25 度，湿度 60%"
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")
