@@ -3,6 +3,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, ToolMessage
 from .state import AgentState
 from src.tools.client import create_client
+from src.security.policy_engine import PolicyEngine
 import os
 import json
 
@@ -82,11 +83,39 @@ async def tools_node(state: AgentState) -> dict:
     global mcp_tools_by_name
     tool_messages = []
     for t in last.tool_calls:
-         
+
+        role = "guest"
         tool_name = t.get("name")
         tool_call_id = t.get("id")
         query = t.get("args", {})
         tool = mcp_tools_by_name.get(tool_name)
+        _policy_engine  = PolicyEngine()
+        desicion = _policy_engine.get_decision(tool_name, role)
+
+        print (f"desicion---{desicion}--")
+        if desicion == "deny":
+            tool_messages.append(ToolMessage(
+                content= json.dumps({
+                    "error":True,
+                    "code":"PERMISSION_DENIED",
+                    "message":  f"当前角色 {role} 无权调用工具 {tool_name}",
+                    "retryable": False
+                }, ensure_ascii= False),
+                tool_call_id = tool_call_id
+            ))
+            continue
+
+        if desicion == "require_approval":
+            tool_messages.append(ToolMessage(
+                content= json.dumps({
+                    "error":True,
+                    "code":"APPROVAL_REQUIRED",
+                    "message":  f"工具 {tool_name} 需要人工审批，当前流程暂不支持",
+                    "retryable": False
+                }, ensure_ascii= False),
+                tool_call_id = tool_call_id
+            ))
+            continue
 
         if tool is None:
             tool_messages.append(ToolMessage(content=f"Unknown tool: {tool_name}", tool_call_id=tool_call_id))

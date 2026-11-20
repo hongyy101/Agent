@@ -1,1 +1,0 @@
-# 查 Postgres 策略表，返回 allow/deny/approval
