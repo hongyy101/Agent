@@ -1,6 +1,7 @@
 import json
 
 from mcp.server.fastmcp.server import FastMCP
+from schemas import WeatherOutput, SearchOutput
 
 mcp = FastMCP("SerchServer")
 
@@ -32,14 +33,21 @@ def fake_search(query:str) -> str:
         "query" : query,
         "results":[
             {
+                "title" : "LangGraph 框架",
+                "snippet" : f"这是一个关于「{query}」框架的模拟搜索结果"
+            },
+            {
                 "title" : "LangGraph 概念介绍",
-                "snippet" : f"这是一个关于「{query}」的模拟搜索结果"
+                "snippet" : f"这是一个关于「{query}」概念介绍的模拟搜索结果"
             }
         ],
-        "total":1
+        "total":2,
+        "page": 1,
+        "page_size": 0
     }
 
-    return _ok(raw)
+    searchOutput = SearchOutput(**raw)
+    return _ok(searchOutput.model_dump())
 
 @mcp.tool()
 def fake_weather(city:str) -> str:
@@ -60,11 +68,8 @@ def fake_weather(city:str) -> str:
         "data_source": "api_v2"
     }
 
-    result = {
-       k: v for k, v in raw.items() if not k.startswith("internal_") and k != "data_source"
-    } 
-
-    return _ok(result)  
+    result = WeatherOutput(**raw)
+    return _ok(result.model_dump())  
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")

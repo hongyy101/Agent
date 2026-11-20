@@ -84,7 +84,7 @@ async def tools_node(state: AgentState) -> dict:
     tool_messages = []
     for t in last.tool_calls:
 
-        role = "guest"
+        role = "user"
         tool_name = t.get("name")
         tool_call_id = t.get("id")
         query = t.get("args", {})
