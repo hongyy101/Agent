@@ -2,7 +2,7 @@
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, ToolMessage
 from .state import AgentState
-from src.tools.client import create_client
+from src.tools.client import load_tools_resilient
 from src.security.policy_engine import PolicyEngine
 import os
 import json
@@ -30,17 +30,15 @@ async def call_model(state: AgentState) -> dict:
 
     global mcp_tools, mcp_tools_by_name
     if mcp_tools is None:
-
         try:
-            mcp_client = await create_client()
-            mcp_tools = await mcp_client.get_tools()
+            mcp_tools = await load_tools_resilient()
             mcp_tools_by_name = { tool.name: tool for tool in mcp_tools }
         except:
             mcp_tools = []
             mcp_tools_by_name = {}
 
-        llm_with_tools  = llm.bind_tools(mcp_tools) if mcp_tools else llm
-        response = await llm_with_tools.ainvoke(state['messages'])
+    llm_with_tools  = llm.bind_tools(mcp_tools) if mcp_tools else llm
+    response = await llm_with_tools.ainvoke(state['messages'])
 
     return {"messages": [response]}
 

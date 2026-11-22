@@ -4,5 +4,7 @@ INSERT INTO tool_policy (tool_name, role, decision) VALUES
 ('fake_weather', 'user', 'allow'),
 ('fake_weather', 'guest', 'require_approval'),
 ('fake_weather_http', 'user', 'allow'),
-('fake_weather_http', 'guest', 'allow')
+('fake_weather_http', 'guest', 'allow'),
+('get_user_info', 'user', 'allow'),
+('get_user_info', 'guest', 'allow')
 ON CONFLICT (tool_name, role) DO NOTHING;
