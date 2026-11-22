@@ -27,8 +27,8 @@
 
 ### 第 1 月关键概念自查（每周末打勾）
 - [✅] 能解释 StateGraph 中 Node 和 Edge 的区别
-- [ ] 能说清 Checkpointer 存的是什么、不存什么
-- [ ] 能画出一次 invoke 在 Postgres 中产生的 checkpoint 记录
+- [✅] 能说清 Checkpointer 存的是什么、不存什么
+- [✅] 能画出一次 invoke 在 Postgres 中产生的 checkpoint 记录
 - [ ] 能解释为什么子图不应带独立 checkpointer
 - [ ] 能手写一个两节点图并 invoke 出结果
 
@@ -38,16 +38,16 @@
 
 | 周次 | 核心任务 | 状态 | 验收标准 | 完成日期 | 备注 |
 |------|---------|------|---------|---------|------|
-| 第5周 | FastMCP Server 开发（stdio） | 🔄 | 2-3 个模拟 .NET API 封装为 MCP Tool；理解 docstring 对决策的影响 | | |
-| 第6周 | streamable-http + MultiServerMCPClient | ⬜ | HTTP 传输；多 Server 同时连接，模拟不同部门 API | | |
+| 第5周 | FastMCP Server 开发（stdio） | ✅ | 2-3 个模拟 .NET API 封装为 MCP Tool；理解 docstring 对决策的影响 | | |
+| 第6周 | streamable-http + MultiServerMCPClient | 🔄 | HTTP 传输；多 Server 同时连接，模拟不同部门 API | | |
 | 第7周 | 自写权限中间件（FastAPI + Postgres 策略表） | ⬜ | 工具调用前查策略表；拒绝时返回结构化错误；不用 0.x 小库 | | |
 | 第8周 | 工具输入/输出契约 + 错误分类 | ⬜ | Pydantic 输入/输出模型；输出裁剪；错误码映射（可重试 vs 不可重试） | | |
 
 ### 第 2 月关键概念自查
-- [ ] 能区分 MCP 架构中 Host / Client / Server 三者角色
-- [ ] 能解释为什么权限判断必须在工具调用边界做，不能靠 Prompt
-- [ ] 能说清 MCP Server 为什么不承载业务逻辑
-- [ ] 能解释"输出裁剪"对 token 成本和防幻觉的双重意义
+- [✅] 能区分 MCP 架构中 Host / Client / Server 三者角色
+- [✅] 能解释为什么权限判断必须在工具调用边界做，不能靠 Prompt
+- [✅] 能说清 MCP Server 为什么不承载业务逻辑
+- [✅] 能解释"输出裁剪"对 token 成本和防幻觉的双重意义
 
 ### 第 2 月扩展项（可选，不阻塞主线）
 - [ ] `pgvector` + 文档切片，写 `knowledge_server.py` 作为额外 MCP Tool
@@ -95,6 +95,10 @@
 |2026-11-17 | Windows 上 ProactorEventLoop 和 psycopg 异步不兼容 →| asyncio.run(main(), loop_factory=asyncio.SelectorEventLoop)|✅|
 |2026-11-17 | AsyncConnectionPool 构造时自动打开被弃用| open=False + await pool.open(wait=True)|✅|
 |2026-11-17 | PostgresSaver 导入路径错误| langgraph.checkpoint.postgres，不是 langchain_core.savers|✅|
+| 2026-11-19 | MCP stdio 配置缺 args 导致 Connection closed | 配置里加 "args": ["脚本路径"]，command 用 sys.executable | ✅ |
+| 2026-11-19 | _ok 里 "data": dict 笔误导致 JSON 序列化失败 | 改成 "data": data | ✅ |
+| 2026-11-19 | tools_node 多次 append 导致同一 tool_call 产生多条 ToolMessage | 每个分支加 continue，确保每个 tool_call_id 只 append 一次 | ✅ |
+| 2026-11-20 | None | str 运算符误用 | 改成 dsn or os.getenv(...) | ✅ |
 
 ## 阶段性里程碑
 

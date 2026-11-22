@@ -30,12 +30,17 @@ async def call_model(state: AgentState) -> dict:
 
     global mcp_tools, mcp_tools_by_name
     if mcp_tools is None:
-        mcp_client = await create_client()
-        mcp_tools = await mcp_client.get_tools()
-        mcp_tools_by_name = { tool.name: tool for tool in mcp_tools }
 
-    llm_with_tools  = llm.bind_tools(mcp_tools)
-    response = await llm_with_tools.ainvoke(state['messages'])
+        try:
+            mcp_client = await create_client()
+            mcp_tools = await mcp_client.get_tools()
+            mcp_tools_by_name = { tool.name: tool for tool in mcp_tools }
+        except:
+            mcp_tools = []
+            mcp_tools_by_name = {}
+
+        llm_with_tools  = llm.bind_tools(mcp_tools) if mcp_tools else llm
+        response = await llm_with_tools.ainvoke(state['messages'])
 
     return {"messages": [response]}
 

@@ -9,5 +9,9 @@ async def create_client() -> MultiServerMCPClient:
                 "command": "python",
                 "args": ["src/tools/mcp_servers/search_server.py"],
                 "transport": "stdio"
+        },
+        "weather" : {
+                        "url": "http://127.0.0.1:8001/mcp",
+                        "transport": "streamable_http"
         }
     })
