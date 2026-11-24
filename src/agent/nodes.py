@@ -1,4 +1,6 @@
- # agent 节点、tools 节点
+# agent 节点、tools 节点
+from datetime import datetime
+
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, ToolMessage
 from .state import AgentState
@@ -56,7 +58,7 @@ def router(state: AgentState) -> str:
     # 例如，根据 state 的内容决定下一步的操作
     # 这里我们返回一个示例输出
 
-    last = state['messages'][-1] 
+    last = state['messages'][-1]
     
     if isinstance(last, AIMessage) and last.tool_calls:
         return "tools"
@@ -85,18 +87,29 @@ async def tools_node(state: AgentState) -> dict:
 
     global mcp_tools_by_name
     tool_messages = []
+    _policy_engine  = PolicyEngine()
     for t in last.tool_calls:
 
         role = "user"
         tool_name = t.get("name")
         tool_call_id = t.get("id")
         query = t.get("args", {})
-        tool = mcp_tools_by_name.get(tool_name)
-        _policy_engine  = PolicyEngine()
-        desicion = _policy_engine.get_decision(tool_name, role)
+        tool = mcp_tools_by_name.get(tool_name)  
+        decision = _policy_engine.get_decision(tool_name, role)
 
-        print (f"desicion---{desicion}--")
-        if desicion == "deny":
+        if not tool_call_id:
+            tool_messages.append(ToolMessage(
+                content=json.dumps({
+                    "error": True,
+                    "code": "MISSING_TOOL_CALL_ID",
+                    "message": "工具调用ID缺失",
+                    "retryable": False
+                }, ensure_ascii=False),
+                tool_call_id=None
+            ))
+            continue
+        
+        if decision == "deny":
             tool_messages.append(ToolMessage(
                 content= json.dumps({
                     "error":True,
@@ -108,7 +121,7 @@ async def tools_node(state: AgentState) -> dict:
             ))
             continue
 
-        if desicion == "require_approval":
+        if decision == "require_approval":
             tool_messages.append(ToolMessage(
                 content= json.dumps({
                     "error":True,
@@ -121,10 +134,18 @@ async def tools_node(state: AgentState) -> dict:
             continue
 
         if tool is None:
-            tool_messages.append(ToolMessage(content=f"Unknown tool: {tool_name}", tool_call_id=tool_call_id))
+            tool_messages.append(ToolMessage(
+                content=json.dumps({
+                    "error": True,
+                    "code": "UNKNOWN_TOOL",
+                    "message": f"未知工具: {tool_name}",
+                    "retryable": False
+                }, ensure_ascii=False),
+                tool_call_id=tool_call_id
+            ))
             continue
 
-        try:       
+        try:
             raw = await tool.ainvoke(query)
             text = raw
 
@@ -137,17 +158,40 @@ async def tools_node(state: AgentState) -> dict:
 
             try:
                 obj = json.loads(text)
-                if isinstance(obj, dict) and obj.get("ok") is True:
-                    tool_messages.append(ToolMessage(content=json.dumps(obj.get("data"),ensure_ascii=False), tool_call_id=tool_call_id))
-                elif isinstance(obj, dict) and obj.get("ok") is False:
-                    tool_messages.append(ToolMessage(content=text, tool_call_id=tool_call_id))
-                else:
-                    tool_messages.append(ToolMessage(content=text, tool_call_id=tool_call_id))
             except json.JSONDecodeError:
-                tool_messages.append(ToolMessage(content=text, tool_call_id=tool_call_id))
+                tool_messages.append(ToolMessage(
+                content=json.dumps({
+                        "error": True,
+                        "code": "INVALID_JSON",
+                        "message": "工具返回格式非合法JSON",
+                        "retryable": False
+                    }, ensure_ascii=False),
+                    tool_call_id=tool_call_id
+                ))
                 continue
 
-        except Exception as e:
-            tool_messages.append(ToolMessage(content=f"tool execution failed: {e} - Unknown tool: {tool_name}", tool_call_id=tool_call_id))
-        
+            if isinstance(obj, dict) and obj.get("ok") is True:
+                tool_messages.append(ToolMessage(content=json.dumps(obj.get("data"),ensure_ascii=False), tool_call_id=tool_call_id))
+                continue
+
+            error = obj.get("error",{})
+            if error.get("retryable") is True:
+                err_msg = error.get("message", str(error))
+                err_code = error.get("code")
+                if err_code =="SERVICE_UNAVAILABLE":
+                    print(f"[DEBUG] 准备抛出异常，当前时间: {datetime.now()}")
+                    raise ConnectionError(f"工具 {tool_name} 服务不可用: {err_msg}")
+                else:
+                    print(f"[DEBUG] 准备抛出异常，当前时间: {datetime.now()}")
+                    raise TimeoutError(f"工具 {tool_name} 调用超时: {err_msg}")
+                        
+            tool_messages.append(ToolMessage(content=text, tool_call_id=tool_call_id))  
+
+        except TimeoutError as e:
+            raise TimeoutError(f"工具 {tool_name}, 信息：{e}")
+        except ConnectionError as e:
+            raise ConnectionError(f"工具 {tool_name}, 信息：{e}")
+        except Exception as exc:
+            raise RuntimeError(f"工具 {tool_name} 调用失败: {exc}")
+
     return {"messages": tool_messages}
