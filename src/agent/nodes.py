@@ -140,7 +140,7 @@ async def tools_node(state: AgentState) -> dict:
                 if isinstance(obj, dict) and obj.get("ok") is True:
                     tool_messages.append(ToolMessage(content=json.dumps(obj.get("data"),ensure_ascii=False), tool_call_id=tool_call_id))
                 elif isinstance(obj, dict) and obj.get("ok") is False:
-                    tool_messages.append(ToolMessage(content=json.dumps(obj.get("error"),ensure_ascii=False), tool_call_id=tool_call_id))
+                    tool_messages.append(ToolMessage(content=text, tool_call_id=tool_call_id))
                 else:
                     tool_messages.append(ToolMessage(content=text, tool_call_id=tool_call_id))
             except json.JSONDecodeError:
