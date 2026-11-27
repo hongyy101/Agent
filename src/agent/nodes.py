@@ -1,6 +1,6 @@
 # agent 节点、tools 节点
 from datetime import datetime
-
+from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, ToolMessage
 from .state import AgentState
@@ -19,7 +19,7 @@ llm = ChatOpenAI(
 mcp_tools = None
 mcp_tools_by_name = {}  # 工具名 -> Tool 对象的映射
 
-async def call_model(state: AgentState) -> dict:
+async def call_model(state: AgentState, config: RunnableConfig) -> dict:
     """
     call_model 是一个异步函数，用于调用模型进行推理。
 
@@ -39,7 +39,18 @@ async def call_model(state: AgentState) -> dict:
             mcp_tools = []
             mcp_tools_by_name = {}
 
-    llm_with_tools  = llm.bind_tools(mcp_tools) if mcp_tools else llm
+    role = config.get("configurable",{}).get("role","guest")
+    allowed_tools = []
+    _policy_engine = PolicyEngine()    
+
+    for t in mcp_tools:
+        decision = _policy_engine.get_decision(t.name, role)
+        if decision == "allow":
+            allowed_tools.append(t)
+
+    print(f"[call_model] role={role}, 允许使用的工具: {[t.name for t in allowed_tools]}")
+
+    llm_with_tools  = llm.bind_tools(allowed_tools) if mcp_tools else llm
     response = await llm_with_tools.ainvoke(state['messages'])
 
     return {"messages": [response]}
@@ -65,7 +76,7 @@ def router(state: AgentState) -> str:
     else:
         return "end"
 
-async def tools_node(state: AgentState) -> dict:
+async def tools_node(state: AgentState, config: RunnableConfig) -> dict:
     """
     tools_node 是一个工具节点函数，用于在代理的状态中执行特定工具操作。
 
@@ -86,11 +97,12 @@ async def tools_node(state: AgentState) -> dict:
         raise RuntimeError("tools_node 执行时 mcp_tools 尚未加载")
 
     global mcp_tools_by_name
+    role = config.get("configurable",{}).get("role","guest")
     tool_messages = []
     _policy_engine  = PolicyEngine()
     for t in last.tool_calls:
 
-        role = "user"
+       
         tool_name = t.get("name")
         tool_call_id = t.get("id")
         query = t.get("args", {})

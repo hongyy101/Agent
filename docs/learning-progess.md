@@ -7,8 +7,8 @@
 
 | 月份 | 主题 | 状态 | 完成周数 |
 |------|------|------|---------|
-| 第 1 月 | LangGraph 运行时底座 + Postgres 持久化 | 🔄 进行中 | 3/4 |
-| 第 2 月 | MCP 工具层 + 确定性执行边界 | 🔄 进行中 | 0/4 |
+| 第 1 月 | LangGraph 运行时底座 + Postgres 持久化 | ✅ 已完成 | 3/4 |
+| 第 2 月 | MCP 工具层 + 确定性执行边界 | 🔄 进行中 | 2/4 |
 | 第 3 月 | HITL + 容错控制 + 防幻觉 | ⬜ 未开始 | 0/4 |
 | 第 4 月 | 可观测性 + 审计 + 求职作品打磨 | ⬜ 未开始 | 0/4 |
 
@@ -20,17 +20,17 @@
 
 | 周次 | 核心任务 | 状态 | 验收标准 | 完成日期 | 备注 |
 |------|---------|------|---------|---------|------|
-| 第1周 | Python 异步范式对齐 + LangGraph 核心概念 | ✅ | 能读懂官方异步示例；理解 StateGraph/Node/Edge/Checkpointer 职责边界 | | |
-| 第2周 | 手写 ReAct 循环（不用 prebuilt） | ✅ | StateGraph 手动定义 agent/tools 节点，实现决策→执行→回传→再决策闭环 | | |
-| 第3周 | Postgres Checkpointer 深度集成 | ✅ | ConnectionPool + PostgresSaver 持久化；理解 thread_id 与状态恢复；能画出 checkpoint 流转图 | | |
-| 第4周 | 错误处理与状态恢复实验 | ⬜ | 模拟进程中断后从 Postgres 恢复；验证子图不应带独立 checkpointer | | |
+| 第1周 | Python 异步范式对齐 + LangGraph 核心概念 | ✅ | 能读懂官方异步示例；理解 StateGraph/Node/Edge/Checkpointer 职责边界 | 2026-11-16 | |
+| 第2周 | 手写 ReAct 循环（不用 prebuilt） | ✅ | StateGraph 手动定义 agent/tools 节点，实现决策→执行→回传→再决策闭环 | 2026-11-16 | |
+| 第3周 | Postgres Checkpointer 深度集成 | ✅ | ConnectionPool + PostgresSaver 持久化；理解 thread_id 与状态恢复；能画出 checkpoint 流转图 | 2026-11-17 | |
+| 第4周 | 错误处理与状态恢复实验 | ⚠️ | 模拟进程中断后从 Postgres 恢复；验证子图不应带独立 checkpointer | 2026-11-18 | 已通过 checkpoint 流转图及数据库查询验证 |
 
 ### 第 1 月关键概念自查（每周末打勾）
 - [✅] 能解释 StateGraph 中 Node 和 Edge 的区别
 - [✅] 能说清 Checkpointer 存的是什么、不存什么
 - [✅] 能画出一次 invoke 在 Postgres 中产生的 checkpoint 记录
-- [ ] 能解释为什么子图不应带独立 checkpointer
-- [ ] 能手写一个两节点图并 invoke 出结果
+- [✅] 能解释为什么子图不应带独立 checkpointer
+- [✅] 能手写一个两节点图并 invoke 出结果
 
 ## 第 2 月：MCP 工具层与确定性执行边界
 
@@ -38,9 +38,9 @@
 
 | 周次 | 核心任务 | 状态 | 验收标准 | 完成日期 | 备注 |
 |------|---------|------|---------|---------|------|
-| 第5周 | FastMCP Server 开发（stdio） | ✅ | 2-3 个模拟 .NET API 封装为 MCP Tool；理解 docstring 对决策的影响 | | |
-| 第6周 | streamable-http + MultiServerMCPClient | 🔄 | HTTP 传输；多 Server 同时连接，模拟不同部门 API | | |
-| 第7周 | 自写权限中间件（FastAPI + Postgres 策略表） | ⬜ | 工具调用前查策略表；拒绝时返回结构化错误；不用 0.x 小库 | | |
+| 第5周 | FastMCP Server 开发（stdio） | ✅ | 2-3 个模拟 .NET API 封装为 MCP Tool；理解 docstring 对决策的影响 | 2026-11-20 | 完成 stdio 模式天气、搜索工具开发与调试 |
+| 第6周 | streamable-http + MultiServerMCPClient | ✅ | HTTP 传输；多 Server 同时连接，模拟不同部门 API | 2026-11-25 | 实现了混合传输（stdio+http）、独立降级、权限检查、输入/输出契约、错误分类与重试机制探索 |
+| 第7周 | 自写权限中间件（FastAPI + Postgres 策略表） | 🔄 | 工具调用前查策略表；拒绝时返回结构化错误；不用 0.x 小库 | | |
 | 第8周 | 工具输入/输出契约 + 错误分类 | ⬜ | Pydantic 输入/输出模型；输出裁剪；错误码映射（可重试 vs 不可重试） | | |
 
 ### 第 2 月关键概念自查
@@ -91,18 +91,20 @@
 
 | 日期 | 问题 | 处理方式 | 状态 |
 |------|------|---------|------|
-|2026-11-17 | psycopg 找不到 libpq| psycopg[binary,pool]|✅|
-|2026-11-17 | Windows 上 ProactorEventLoop 和 psycopg 异步不兼容 →| asyncio.run(main(), loop_factory=asyncio.SelectorEventLoop)|✅|
-|2026-11-17 | AsyncConnectionPool 构造时自动打开被弃用| open=False + await pool.open(wait=True)|✅|
-|2026-11-17 | PostgresSaver 导入路径错误| langgraph.checkpoint.postgres，不是 langchain_core.savers|✅|
+| 2026-11-17 | psycopg 找不到 libpq | psycopg[binary,pool] | ✅ |
+| 2026-11-17 | Windows 上 ProactorEventLoop 和 psycopg 异步不兼容 | asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy()) | ✅ |
+| 2026-11-17 | AsyncConnectionPool 构造时自动打开被弃用 | open=False + await pool.open(wait=True) | ✅ |
+| 2026-11-17 | PostgresSaver 导入路径错误 | langgraph.checkpoint.postgres，不是 langchain_core.savers | ✅ |
 | 2026-11-19 | MCP stdio 配置缺 args 导致 Connection closed | 配置里加 "args": ["脚本路径"]，command 用 sys.executable | ✅ |
 | 2026-11-19 | _ok 里 "data": dict 笔误导致 JSON 序列化失败 | 改成 "data": data | ✅ |
 | 2026-11-19 | tools_node 多次 append 导致同一 tool_call 产生多条 ToolMessage | 每个分支加 continue，确保每个 tool_call_id 只 append 一次 | ✅ |
-| 2026-11-20 | None | str 运算符误用 | 改成 dsn or os.getenv(...) | ✅ |
+| 2026-11-20 | None \| str 运算符误用 | 改成 dsn or os.getenv(...) | ✅ |
+| 2026-11-22 | 单 Client 包所有 Server 导致一损俱损 | 改为每 Server 独立加载、独立降级 | ✅ |
+| 2026-11-25 | 框架级 RetryPolicy 用于业务错误导致节点级并发污染 | 明确重试边界：RetryPolicy 用于基础设施故障，业务错误在 Tool 层按 for 循环隔离重试 | ✅ |
 
 ## 阶段性里程碑
 
-- [ ] M1（第 4 周末）：手写 StateGraph + Postgres Checkpointer 跑通，进程中断可恢复
-- [ ] M2（第 8 周末）：MCP 工具层 + 权限中间件跑通，拒绝路径可演示
-- [ ] M3（第 12 周末）：HITL + 断路器 + 验证器跑通，敏感操作全流程可演示
-- [ ] M4（第 16 周末）：Langfuse trace + 审计表 + 演示视频 + 面试叙事就绪
+- [✅] **M1（第 4 周末）**：手写 StateGraph + Postgres Checkpointer 跑通，进程中断可恢复
+- [ ] **M2（第 8 周末）**：MCP 工具层 + 权限中间件跑通，拒绝路径可演示
+- [ ] **M3（第 12 周末）**：HITL + 断路器 + 验证器跑通，敏感操作全流程可演示
+- [ ] **M4（第 16 周末）**：Langfuse trace + 审计表 + 演示视频 + 面试叙事就绪
